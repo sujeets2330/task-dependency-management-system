@@ -68,7 +68,7 @@ htmlcov/
 .next/
 
 # Set Up
-DECISION.md
+DECISIONS.md
 PROJECT_SUMMARY.md
 SETUP_GUIDE.md
 
