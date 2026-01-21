@@ -31,6 +31,69 @@ export default function TaskCard({
     blocked: "Blocked"
   };
 
+  // Get available statuses - FIXED VERSION
+  const getAvailableStatuses = () => {
+    const allStatuses = [
+      { value: 'pending', label: 'Pending' },
+      { value: 'in_progress', label: 'In Progress' },
+      { value: 'completed', label: 'Completed' },
+      { value: 'blocked', label: 'Blocked' }
+    ];
+
+    const currentStatus = task.status;
+
+    // If task is completed, it stays completed
+    if (currentStatus === 'completed') {
+      return allStatuses.filter(s => s.value === 'completed');
+    }
+
+    // Check if ALL dependencies are completed
+    const allDepsCompleted = task.dependencies.length === 0 || 
+      task.dependencies.every(dep => {
+        const depTask = allTasks.find(t => t.id === dep.depends_on);
+        return depTask?.status === 'completed';
+      });
+
+    // If dependencies are NOT all completed, task should be BLOCKED
+    if (!allDepsCompleted) {
+      return allStatuses.filter(s => s.value === 'blocked');
+    }
+
+    // ALL dependencies are completed! Task is READY for normal workflow
+    
+    // Blocked → can become Pending (when dependencies get completed)
+    if (currentStatus === 'blocked') {
+      return allStatuses.filter(s => s.value === 'pending');
+    }
+    
+    // Pending → can start work (In Progress)
+    if (currentStatus === 'pending') {
+      return allStatuses.filter(s => 
+        s.value === 'pending' || 
+        s.value === 'in_progress'
+      );
+    }
+    
+    // In Progress → can finish work (Completed)
+    if (currentStatus === 'in_progress') {
+      return allStatuses.filter(s => 
+        s.value === 'in_progress' || 
+        s.value === 'completed'
+      );
+    }
+
+    return allStatuses;
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    console.log(`Changing task ${task.id} status to ${newStatus}`);
+    try {
+      await onStatusChange(task.id, newStatus);
+    } catch (error) {
+      console.error("Failed to change status:", error);
+    }
+  };
+
   const handleAddDependency = async () => {
     if (!selectedDependency) return;
 
@@ -64,6 +127,8 @@ export default function TaskCard({
       !task.dependencies.some((d) => d.depends_on === t.id)
   );
 
+  const availableStatuses = getAvailableStatuses();
+
   return (
     <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-primary">
       <div className="flex justify-between items-start mb-3">
@@ -81,11 +146,11 @@ export default function TaskCard({
       <div className="mb-3 flex gap-2">
         <select
           value={task.status}
-          onChange={(e) => onStatusChange(task.id, e.target.value)}
+          onChange={(e) => handleStatusChange(e.target.value)}
           className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          disabled={isLoading}
+          disabled={isLoading || availableStatuses.length === 1}
         >
-          {Object.entries(statusLabels).map(([value, label]) => (
+          {availableStatuses.map(({ value, label }) => (
             <option key={value} value={value}>
               {label}
             </option>
@@ -132,21 +197,8 @@ export default function TaskCard({
               </div>
             )}
 
-            {task.dependent_tasks.length > 0 && (
-              <div className="bg-blue-50 p-2 rounded">
-                <p className="text-xs font-medium text-secondary mb-2">Tasks depending on this:</p>
-                {task.dependent_tasks.map((dep) => (
-                  <div key={dep.id} className="text-sm text-blue-700 mb-1">
-                    {dep.title} - <span className={`status-badge ${statusColors[dep.status]}`}>
-                      {statusLabels[dep.status]}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
             {/* Add Dependency */}
-            <div className="bg-gray-50 p-2 rounded mt-2">
+            <div className="bg-gray-50 p-2 rounded">
               <p className="text-xs font-medium text-secondary mb-2">Add dependency:</p>
               <div className="flex gap-2">
                 <select
@@ -161,7 +213,7 @@ export default function TaskCard({
                   <option value="">Select a task...</option>
                   {availableTasks.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.title}
+                      {t.title} ({statusLabels[t.status]})
                     </option>
                   ))}
                 </select>
@@ -175,9 +227,6 @@ export default function TaskCard({
               </div>
               {circularError && (
                 <p className="text-xs text-red-600 mt-1">{circularError}</p>
-              )}
-              {availableTasks.length === 0 && (
-                <p className="text-xs text-gray-500 mt-1">No tasks available to add as dependency</p>
               )}
             </div>
           </div>

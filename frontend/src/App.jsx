@@ -196,5 +196,12 @@ export default function App() {
         )}
       </main>
     </div>
+    
   );
+  <button 
+  onClick={forceRefresh}
+  className="bg-yellow-500 text-white p-2 rounded"
+>
+   Force Refresh
+</button>
 }

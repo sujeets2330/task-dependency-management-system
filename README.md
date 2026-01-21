@@ -390,10 +390,6 @@ curl http://localhost:8000/api/tasks/
 - **backend/README.md** - Backend setup and API docs
 - **frontend/README.md** - Frontend setup and component docs
 
-## License
-
-MIT License - feel free to use for personal and commercial projects
-
 ## Support
 
 For issues, questions, or suggestions:

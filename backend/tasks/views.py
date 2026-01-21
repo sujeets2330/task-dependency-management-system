@@ -9,7 +9,6 @@ from .serializers import (
     AddDependencySerializer
 )
 from .dependency_checker import CircularDependencyChecker
-from .status_updater import TaskStatusUpdater
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -37,13 +36,11 @@ class TaskViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
+        
+        # Save the task (auto-updates handled in Task.save())
         self.perform_update(serializer)
+        
         return Response(TaskSerializer(instance).data)
-
-    def partial_update(self, request, *args, **kwargs):
-        """Partial update of task."""
-        kwargs['partial'] = True
-        return self.update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         """Delete a task."""
@@ -120,9 +117,6 @@ class TaskViewSet(viewsets.ModelViewSet):
                 depends_on=depends_on_task
             )
             
-            # Update task status based on new dependency
-            TaskStatusUpdater.update_status_from_dependencies(task.id)
-            
             return Response(
                 {
                     'message': 'Dependency added successfully',
@@ -159,9 +153,6 @@ class TaskViewSet(viewsets.ModelViewSet):
             )
             dependency.delete()
             
-            # Update task status after removing dependency
-            TaskStatusUpdater.update_status_from_dependencies(task.id)
-            
             return Response(
                 {'message': 'Dependency removed successfully'},
                 status=status.HTTP_204_NO_CONTENT
@@ -171,35 +162,6 @@ class TaskViewSet(viewsets.ModelViewSet):
                 {'error': 'Dependency not found.'},
                 status=status.HTTP_404_NOT_FOUND
             )
-
-    @action(detail=True, methods=['get'])
-    def dependency_graph(self, request, pk=None):
-        """Get the full dependency graph for visualization."""
-        task = self.get_object()
-        
-        # Get all tasks
-        all_tasks = Task.objects.all().values('id', 'title', 'status')
-        
-        # Get all dependencies
-        dependencies = TaskDependency.objects.all().values(
-            'id', 'task_id', 'depends_on_id'
-        )
-        
-        return Response({
-            'tasks': list(all_tasks),
-            'dependencies': list(dependencies)
-        })
-
-    @action(detail=False, methods=['get'])
-    def graph_data(self, request):
-        """Get all tasks and dependencies for the full graph visualization."""
-        all_tasks = Task.objects.all().values('id', 'title', 'status')
-        dependencies = TaskDependency.objects.all().values('id', 'task_id', 'depends_on_id')
-        
-        return Response({
-            'tasks': list(all_tasks),
-            'dependencies': list(dependencies)
-        })
 
     @action(detail=False, methods=['post'])
     def check_circular_dependency(self, request):
@@ -213,12 +175,29 @@ class TaskViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        result = CircularDependencyChecker.detect_circular_dependency(
-            task_id,
-            depends_on_id
-        )
+        try:
+            result = CircularDependencyChecker.detect_circular_dependency(
+                int(task_id),
+                int(depends_on_id)
+            )
+            
+            return Response({
+                'has_cycle': result['has_cycle'],
+                'path': result['path']
+            })
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=False, methods=['get'])
+    def graph_data(self, request):
+        """Get all tasks and dependencies for the full graph visualization."""
+        all_tasks = Task.objects.all().values('id', 'title', 'status')
+        dependencies = TaskDependency.objects.all().values('id', 'task_id', 'depends_on_id')
         
         return Response({
-            'has_cycle': result['has_cycle'],
-            'path': result['path']
+            'tasks': list(all_tasks),
+            'dependencies': list(dependencies)
         })
