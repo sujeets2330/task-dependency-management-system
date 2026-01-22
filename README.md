@@ -376,27 +376,12 @@ curl http://localhost:8000/api/tasks/
    - E2E tests with Cypress
    - Performance benchmarks
 
-## Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-## Documentation
-
-- **DECISIONS.md** - Technical decisions and trade-offs
-- **backend/README.md** - Backend setup and API docs
-- **frontend/README.md** - Frontend setup and component docs
-
 ## Support
 
 For issues, questions, or suggestions:
 1. Check existing GitHub issues
-2. Review DECISIONS.md for design rationale
-3. Check backend/README.md and frontend/README.md
-4. Create detailed issue with reproduction steps
+2. Check backend/README.md and frontend/README.md
+3. Create detailed issue with reproduction steps
 
 ---
 
